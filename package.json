@@ -1,0 +1,34 @@
+{
+  "name": "llm-inference-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Production LLM inference logging and observability platform",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "npm run build:backend && npm run build:frontend",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install && cd ../sdk && npm install",
+    "db:migrate": "cd backend && npm run db:migrate",
+    "db:migrate:dev": "cd backend && npm run db:migrate:dev",
+    "db:seed": "cd backend && npm run db:seed",
+    "db:studio": "cd backend && npm run db:studio",
+    "docker:up": "cd docker && docker compose up -d",
+    "docker:down": "cd docker && docker compose down",
+    "docker:logs": "cd docker && docker compose logs -f",
+    "docker:build": "cd docker && docker compose build",
+    "k8s:apply": "kubectl apply -f k8s/base/",
+    "k8s:delete": "kubectl delete -f k8s/base/",
+    "lint": "cd frontend && npm run lint",
+    "type-check": "cd backend && npx tsc --noEmit && cd ../frontend && npx tsc --noEmit"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}

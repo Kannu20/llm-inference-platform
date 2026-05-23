@@ -1,0 +1,221 @@
+// prisma/schema.prisma
+// Complete database schema for LLM Inference Logging Platform
+// PostgreSQL with full indexing strategy
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────
+// USERS
+// PK: UUID for distributed-safe ID generation
+// api_key_hash: Store bcrypt hash, never raw key
+// ─────────────────────────────────────────────────────────────
+model User {
+  id          String   @id @default(uuid()) @db.Uuid
+  email       String   @unique
+  name        String
+  apiKeyHash  String?  @map("api_key_hash")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  sessions      Session[]
+  conversations Conversation[]
+
+  @@index([email])
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────────────────────
+// SESSIONS
+// Represents a browser session, not a login session.
+// Allows multiple conversations per session.
+// ip_address/user_agent: for analytics, stored as strings (no PII risk at schema level)
+// ─────────────────────────────────────────────────────────────
+model Session {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String?  @map("user_id") @db.Uuid
+  metadata     Json?    @default("{}")
+  startedAt    DateTime @default(now()) @map("started_at")
+  lastActiveAt DateTime @default(now()) @map("last_active_at")
+  ipAddress    String?  @map("ip_address")
+  userAgent    String?  @map("user_agent")
+
+  user          User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  conversations Conversation[]
+  inferenceLogs InferenceLog[]
+
+  // Index on lastActiveAt for session cleanup jobs
+  @@index([userId])
+  @@index([lastActiveAt])
+  @@map("sessions")
+}
+
+// ─────────────────────────────────────────────────────────────
+// CONVERSATIONS
+// Each conversation is tied to one provider+model combination
+// (can be changed per conversation, not mid-conversation)
+// systemPrompt: optional custom system instruction
+// ─────────────────────────────────────────────────────────────
+model Conversation {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String?   @map("user_id") @db.Uuid
+  sessionId    String    @map("session_id") @db.Uuid
+  title        String    @default("New Conversation")
+  provider     Provider  @default(OPENROUTER)
+  model        String    @default("")
+  systemPrompt String?   @map("system_prompt")
+  isArchived   Boolean   @default(false) @map("is_archived")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  user          User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  session       Session       @relation(fields: [sessionId], references: [id])
+  messages      Message[]
+  inferenceLogs InferenceLog[]
+
+  // Compound index: list conversations for user ordered by recency
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([sessionId])
+  @@index([isArchived, createdAt(sort: Desc)])
+  @@map("conversations")
+}
+
+// ─────────────────────────────────────────────────────────────
+// MESSAGES
+// role: enum restricts to valid values
+// tokenCount: estimated at write time via tiktoken/gemini count
+// content stored as TEXT (no limit) for full conversation history
+// ─────────────────────────────────────────────────────────────
+model Message {
+  id             String      @id @default(uuid()) @db.Uuid
+  conversationId String      @map("conversation_id") @db.Uuid
+  role           MessageRole
+  content        String
+  tokenCount     Int?        @map("token_count")
+  createdAt      DateTime    @default(now()) @map("created_at")
+
+  conversation  Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  inferenceLogs InferenceLog[]
+
+  // Critical index: fetching conversation messages in order is the hottest query
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
+// ─────────────────────────────────────────────────────────────
+// INFERENCE LOGS
+// Central observability table — every LLM call produces one row
+// input/output_preview: first 500 chars after PII redaction
+// latency_ms: time from first byte sent to first byte received
+// request_duration_ms: total wall clock time
+// metadata: provider-specific extra info (finish_reason, safety_ratings etc)
+// ─────────────────────────────────────────────────────────────
+model InferenceLog {
+  id                String        @id @default(uuid()) @db.Uuid
+  messageId         String?       @map("message_id") @db.Uuid
+  conversationId    String        @map("conversation_id") @db.Uuid
+  sessionId         String        @map("session_id") @db.Uuid
+  
+  provider          Provider
+  model             String
+  status            RequestStatus @default(PENDING)
+  
+  inputTokens       Int?          @map("input_tokens")
+  outputTokens      Int?          @map("output_tokens")
+  totalTokens       Int?          @map("total_tokens")
+  
+  latencyMs         Int?          @map("latency_ms")
+  requestDurationMs Int?          @map("request_duration_ms")
+  
+  startedAt         DateTime      @map("started_at")
+  completedAt       DateTime?     @map("completed_at")
+  
+  inputPreview      String?       @map("input_preview") @db.VarChar(500)
+  outputPreview     String?       @map("output_preview") @db.VarChar(500)
+  
+  isStreaming       Boolean       @default(false) @map("is_streaming")
+  errorMessage      String?       @map("error_message")
+  errorCode         String?       @map("error_code")
+  
+  metadata          Json?         @default("{}")
+
+  message       Message?      @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  conversation  Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  session       Session       @relation(fields: [sessionId], references: [id])
+
+  // Multi-column indexes for dashboard queries
+  // (provider, startedAt) covers "latency by provider over time"
+  // (status, startedAt) covers "error rate over time"
+  @@index([conversationId])
+  @@index([sessionId])
+  @@index([startedAt(sort: Desc)])
+  @@index([provider, startedAt(sort: Desc)])
+  @@index([status, startedAt(sort: Desc)])
+  @@index([provider, status])
+  @@map("inference_logs")
+}
+
+// ─────────────────────────────────────────────────────────────
+// ANALYTICS SNAPSHOTS
+// Pre-aggregated hourly buckets — avoids expensive GROUP BY on inference_logs
+// Written by the analytics worker every hour
+// period: truncated to hour boundary (2024-01-15 14:00:00)
+// ─────────────────────────────────────────────────────────────
+model AnalyticsSnapshot {
+  id                String   @id @default(uuid()) @db.Uuid
+  period            DateTime // truncated to hour
+  provider          Provider
+  model             String
+  
+  totalRequests     Int      @default(0) @map("total_requests")
+  successCount      Int      @default(0) @map("success_count")
+  errorCount        Int      @default(0) @map("error_count")
+  cancelledCount    Int      @default(0) @map("cancelled_count")
+  
+  avgLatencyMs      Float?   @map("avg_latency_ms")
+  p50LatencyMs      Float?   @map("p50_latency_ms")
+  p95LatencyMs      Float?   @map("p95_latency_ms")
+  p99LatencyMs      Float?   @map("p99_latency_ms")
+  
+  totalInputTokens  Int      @default(0) @map("total_input_tokens")
+  totalOutputTokens Int      @default(0) @map("total_output_tokens")
+  
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  // Unique constraint: one row per (hour, provider, model) combination
+  @@unique([period, provider, model])
+  @@index([period(sort: Desc)])
+  @@index([provider, period(sort: Desc)])
+  @@map("analytics_snapshots")
+}
+
+// ─────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────
+enum Provider {
+  GEMINI
+  OPENAI
+  CLAUDE
+  GROK
+  OPENROUTER
+}
+
+enum MessageRole {
+  user
+  assistant
+  system
+}
+
+enum RequestStatus {
+  PENDING
+  SUCCESS
+  ERROR
+  CANCELLED
+  STREAMING
+}

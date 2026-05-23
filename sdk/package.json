@@ -1,0 +1,17 @@
+{
+  "name": "@llm-platform/sdk",
+  "version": "1.0.0",
+  "description": "Lightweight inference logging SDK for LLM applications",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "@types/node": "^22.7.0"
+  }
+}

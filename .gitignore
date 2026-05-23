@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+.next/
+out/
+build/
+
+# Environment variables — NEVER commit these
+.env
+.env.local
+.env.production
+.env.staging
+
+# Database
+*.db
+*.sqlite
+
+# Prisma
+backend/prisma/migrations/
+
+# Logs
+*.log
+npm-debug.log*
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Docker
+docker/grafana/dashboards/*.json
+
+# Kubernetes — secrets should never be committed
+k8s/base/secrets.yaml
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Turbopack
+.turbo/
