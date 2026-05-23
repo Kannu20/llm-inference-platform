@@ -20,10 +20,16 @@ export abstract class BaseProvider {
   protected apiKey: string;
   protected model: string;
 
+  // constructor(apiKey: string, model?: string) {
+  //   this.apiKey = apiKey;
+  //   this.model = model || this.defaultModel;
+  // }
   constructor(apiKey: string, model?: string) {
-    this.apiKey = apiKey;
-    this.model = model || this.defaultModel;
-  }
+  this.apiKey = apiKey;
+
+  // temporary value
+  this.model = model || '';
+}
 
   abstract chat(
     messages: ChatMessage[],

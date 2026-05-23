@@ -44,7 +44,7 @@ export class OpenRouterProvider extends BaseProvider {
   private client: OpenAI;
   private siteUrl: string;
   private siteName: string;
-  private apiKey: string;
+  // private apiKey: string;
 
   constructor(apiKey: string, model?: string, siteUrl?: string, siteName?: string) {
     super(apiKey, model);
@@ -260,7 +260,7 @@ export class OpenRouterProvider extends BaseProvider {
         }
       );
       if (!response.ok) return null;
-      const data = await response.json();
+      const data = (await response.json()) as { data: OpenRouterGenerationStats };
       return data.data as OpenRouterGenerationStats;
     } catch {
       return null;
@@ -277,7 +277,7 @@ export class OpenRouterProvider extends BaseProvider {
         headers: { Authorization: `Bearer ${apiKey}` },
       });
       if (!response.ok) return OPENROUTER_POPULAR_MODELS;
-      const data = await response.json();
+      const data = (await response.json()) as { data: OpenRouterModel[] };
       return (data.data || []) as OpenRouterModel[];
     } catch {
       return OPENROUTER_POPULAR_MODELS;

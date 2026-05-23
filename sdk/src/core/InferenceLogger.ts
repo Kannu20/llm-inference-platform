@@ -3,13 +3,23 @@
 // Captures all inference metadata, redacts PII, queues for async send.
 // Never blocks the LLM call. Handles retries and maintains a failure queue.
 
-import { v4 as uuidv4 } from 'uuid';
-
 // ─────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────
 export type Provider = 'GEMINI' | 'OPENAI' | 'CLAUDE' | 'GROK' | 'OPENROUTER';
 export type RequestStatus = 'PENDING' | 'SUCCESS' | 'ERROR' | 'CANCELLED' | 'STREAMING';
+
+function generateUUID(): string {
+  if (typeof globalThis !== 'undefined' && typeof (globalThis as any).crypto !== 'undefined' && typeof (globalThis as any).crypto.randomUUID === 'function') {
+    return (globalThis as any).crypto.randomUUID();
+  }
+
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.floor(Math.random() * 16);
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
 
 export interface InferenceLogEntry {
   id: string;
@@ -99,7 +109,7 @@ export class InferenceLogger {
   private config: Required<SDKConfig>;
   private queue: QueueItem[] = [];
   private failureQueue: InferenceLogEntry[] = [];
-  private flushTimer: ReturnType<typeof setInterval> | null = null;
+  private flushTimer: NodeJS.Timeout | null = null;
   private isFlushing = false;
 
   constructor(config: SDKConfig) {
@@ -140,7 +150,7 @@ export class InferenceLogger {
     metadata?: Record<string, unknown>;
   }): InferenceTracker {
     const entry: InferenceLogEntry = {
-      id: uuidv4(),
+      id: generateUUID(),
       messageId: params.messageId,
       conversationId: params.conversationId,
       sessionId: this.config.sessionId,

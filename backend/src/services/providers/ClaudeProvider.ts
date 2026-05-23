@@ -78,7 +78,7 @@ export class ClaudeProvider extends BaseProvider {
       }
     }
 
-    const finalMessage = await stream.getFinalMessage();
+    const finalMessage = await stream.finalMessage();
 
     if (onChunk) onChunk({ type: 'done' });
 

@@ -121,12 +121,40 @@ export class AnalyticsService {
     };
   }
 
+  // private async getRecentLogs(limit: number) {
+  //   return prisma.inferenceLog.findMany({
+  //     orderBy: { startedAt: 'desc' },
+  //     take: limit,
+  //   });
+  // }
   private async getRecentLogs(limit: number) {
-    return prisma.inferenceLog.findMany({
-      orderBy: { startedAt: 'desc' },
-      take: limit,
-    });
-  }
+  const logs = await prisma.inferenceLog.findMany({
+    orderBy: { startedAt: 'desc' },
+    take: limit,
+  });
+
+  return logs.map(log => ({
+    ...log,
+
+    // null → undefined conversion
+    messageId: log.messageId ?? undefined,
+
+    inputTokens: log.inputTokens ?? undefined,
+    outputTokens: log.outputTokens ?? undefined,
+    totalTokens: log.totalTokens ?? undefined,
+
+    latencyMs: log.latencyMs ?? undefined,
+    requestDurationMs: log.requestDurationMs ?? undefined,
+
+    completedAt: log.completedAt ?? undefined,
+
+    outputPreview: log.outputPreview ?? undefined,
+    errorMessage: log.errorMessage ?? undefined,
+    errorCode: log.errorCode ?? undefined,
+
+    metadata: log.metadata ?? undefined,
+  })) as import('../../types').InferenceLog[];
+}
 
   private async getLatencyOverTime(since: Date) {
     // Group by 5-minute buckets using raw SQL

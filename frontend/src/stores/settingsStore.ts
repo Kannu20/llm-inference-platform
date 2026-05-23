@@ -29,6 +29,7 @@ const DEFAULT_MODELS: Record<Provider, string> = {
   OPENAI: 'gpt-4o-mini',
   CLAUDE: 'claude-3-5-haiku-20241022',
   GROK: 'grok-beta',
+  OPENROUTER: 'qwen/qwen3.7-max',
 };
 
 export const useSettingsStore = create<SettingsState>()(

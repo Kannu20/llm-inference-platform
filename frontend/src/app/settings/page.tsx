@@ -16,6 +16,7 @@ const PROVIDER_MODELS: Record<Provider, string[]> = {
   OPENAI: ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo'],
   CLAUDE: ['claude-3-5-haiku-20241022', 'claude-3-5-sonnet-20241022', 'claude-3-opus-20240229'],
   GROK: ['grok-beta', 'grok-2'],
+  OPENROUTER: ['qwen/qwen3.7-max', 'gemini-2.0-flash', 'gpt-4o-mini', 'claude-3-5-haiku-20241022', 'grok-beta'],
 };
 
 const PROVIDER_DOCS: Record<Provider, string> = {
@@ -23,6 +24,7 @@ const PROVIDER_DOCS: Record<Provider, string> = {
   OPENAI: 'https://platform.openai.com/api-keys',
   CLAUDE: 'https://console.anthropic.com/settings/keys',
   GROK: 'https://console.x.ai/',
+  OPENROUTER: 'https://openrouter.ai/dashboard',
 };
 
 export default function SettingsPage() {
@@ -38,7 +40,7 @@ export default function SettingsPage() {
   } = useSettingsStore();
 
   const [showKeys, setShowKeys] = useState<Record<Provider, boolean>>({
-    GEMINI: false, OPENAI: false, CLAUDE: false, GROK: false,
+    GEMINI: false, OPENAI: false, CLAUDE: false, GROK: false, OPENROUTER: true,
   });
   const [saved, setSaved] = useState(false);
 

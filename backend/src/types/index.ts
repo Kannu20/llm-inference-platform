@@ -137,7 +137,7 @@ export type MessageRole = 'user' | 'assistant' | 'system';
 export type RequestStatus = 'PENDING' | 'SUCCESS' | 'ERROR' | 'CANCELLED' | 'STREAMING';
 
 export interface Message {
-  id: string;
+  id: string | null;
   conversationId: string;
   role: MessageRole;
   content: string;
@@ -161,7 +161,7 @@ export interface Conversation {
 
 export interface InferenceLog {
   id: string;
-  messageId?: string;
+  messageId: string | null;
   conversationId: string;
   sessionId: string;
   provider: Provider;
@@ -183,7 +183,7 @@ export interface InferenceLog {
 }
 
 export interface InferenceLogPayload {
-  messageId?: string;
+  messageId?: string | null;
   conversationId: string;
   sessionId: string;
   provider: Provider;
