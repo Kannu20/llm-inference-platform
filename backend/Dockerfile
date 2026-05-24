@@ -47,25 +47,14 @@
 
 # backend/Dockerfile
 
-# ── Stage 1: Dependencies ────────────────────────────────────
-FROM node:22-alpine AS deps
-WORKDIR /app
-
-# ADD THIS ↓
-RUN apk add --no-cache python3 make g++ openssl libc6-compat
-
-COPY package.json package-lock.json* ./
-RUN npm ci --only=production
-
-
-# ── Stage 2: Builder ─────────────────────────────────────────
+# ── Stage 1: Builder ─────────────────────────────────────────
 FROM node:22-alpine AS builder
 WORKDIR /app
 
-# ADD THIS ↓
-RUN apk add --no-cache openssl libc6-compat
+RUN apk add --no-cache python3 make g++ openssl libc6-compat
 
 COPY package.json package-lock.json* ./
+
 RUN npm ci
 
 COPY . .
@@ -74,11 +63,10 @@ RUN npx prisma generate
 RUN npm run build
 
 
-# ── Stage 3: Production runner ───────────────────────────────
+# ── Stage 2: Production runner ───────────────────────────────
 FROM node:22-alpine AS runner
 WORKDIR /app
 
-# ADD THIS ↓
 RUN apk add --no-cache openssl libc6-compat
 
 ENV NODE_ENV=production
@@ -86,7 +74,8 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nodeapp
 
-COPY --from=deps --chown=nodeapp:nodejs /app/node_modules ./node_modules
+# IMPORTANT: builder se copy karna
+COPY --from=builder --chown=nodeapp:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nodeapp:nodejs /app/dist ./dist
 COPY --from=builder --chown=nodeapp:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nodeapp:nodejs /app/package.json ./
@@ -95,4 +84,4 @@ USER nodeapp
 
 EXPOSE 4000
 
-CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node dist/server.js"]
+CMD ["sh","-c","npx prisma migrate deploy && node dist/server.js"]
