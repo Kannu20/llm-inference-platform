@@ -19,8 +19,7 @@ build/
 *.db
 *.sqlite
 
-# Prisma
-backend/prisma/migrations/
+
 
 # Logs
 *.log
